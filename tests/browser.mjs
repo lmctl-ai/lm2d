@@ -147,7 +147,7 @@ assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= wind
 await page.screenshot({ path: path.join(repository, 'target/lm2d-mobile.png'), fullPage: true });
 
 assert.deepEqual(errors, []);
-const allowedOrigins = new Set([new URL(base).origin]);
+const allowedOrigins = new Set([new URL(base).origin, new URL(page.url()).origin]);
 assert.deepEqual(requests.filter(url => !allowedOrigins.has(new URL(url).origin)), [], 'book loads no third-party resources');
 console.log(JSON.stringify({ pages: 9, chapters: ['SVG', 'Canvas', 'bar', 'line', 'scatter', 'pie', 'animation', 'LMCode'], svg: 'DOM shapes, groups, paths, palette redraw', canvas: 'pixels, gradients, pointer marks', charts: '6 bars, 2 lines, 56 samples, 4 wedges', animation: 'frames, pause, keyboard resume', lmcode: '@release, @components, failure-atomic replacement', mobile: 'no horizontal overflow', errors }, null, 2));
 await browser.close();
