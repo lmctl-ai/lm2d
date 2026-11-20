@@ -1,0 +1,57 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          path: lm2d
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: lmctl-ai/lmcode-java
+          ref: b88d3401ee10210a0a6583991d6a81427d5f112a
+          path: lmcode-java
+          persist-credentials: false
+      - uses: graalvm/setup-graalvm@27b360dbb857524eaf0b4c4cef364d38e5b4f173
+        with:
+          java-version: '21'
+          distribution: graalvm-community
+          cache: maven
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24.15
+      - name: Install the published LMCode compiler
+        run: |
+          npm install --prefix "$RUNNER_TEMP/lm2d-compiler" @lmctl-ai/lmctl@0.2.482
+          echo "LMCODE_COMPILER_MODULE=$RUNNER_TEMP/lm2d-compiler/node_modules/@lmctl-ai/lmctl/dist/dsl.js" >> "$GITHUB_ENV"
+      - name: Install the LMCode Java runtime
+        working-directory: lmcode-java
+        run: mvn -q -DskipTests install
+      - name: Check generated book pages
+        working-directory: lm2d
+        run: |
+          python3 scripts/generate-book.py
+          git diff --exit-code
+      - name: Run JVM tests and build the TeaVM demo
+        run: mvn -f lm2d/pom.xml clean verify
+      - name: Install browser test dependencies
+        run: |
+          npm ci --prefix lm2d
+          npx --prefix lm2d playwright install --with-deps chromium
+      - name: Run all demo book browser integration tests
+        run: npm test --prefix lm2d
